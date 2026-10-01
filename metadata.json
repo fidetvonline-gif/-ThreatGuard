@@ -1,0 +1,6 @@
+{
+  "name": "ThreatGuard",
+  "description": "Mobile threat detection and security analysis system that analyzes accessible OS telemetry, classifies threats with auditable evidence, and provides permitted remediation workflows.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
