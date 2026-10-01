@@ -1,6 +1,6 @@
 /**
- * ThreatGuard Store & Persistence Service
- * Manages local database state for threats, scans, devices, signatures, and false-positives.
+ * ThreatGuard Unified Store & Persistence Manager
+ * Uses SupabaseService as the primary remote database provider with seamless local cache.
  */
 
 import {
@@ -13,6 +13,7 @@ import {
 } from '../types/threat';
 import { runSecurityScan } from './detectionEngine';
 import { DEFAULT_SIGNATURES, INITIAL_DEVICE_INFO, INITIAL_TELEMETRY_APPS } from './mockTelemetry';
+import { SupabaseService } from './supabaseService';
 
 const STORAGE_KEYS = {
   DEVICE: 'threatguard_device_info',
@@ -29,11 +30,11 @@ export interface CustomFileItem {
   size: number;
   sha256: string;
   uploadedAt: string;
-  content: string; // Base64 or text representation
+  content: string;
 }
 
 export class ThreatGuardStore {
-  // Load or initialize device info
+  // Device Info
   static getDeviceInfo(): DeviceInfo {
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.DEVICE);
@@ -46,6 +47,8 @@ export class ThreatGuardStore {
 
   static saveDeviceInfo(info: DeviceInfo): void {
     localStorage.setItem(STORAGE_KEYS.DEVICE, JSON.stringify(info));
+    // Asynchronously synchronize with Supabase
+    SupabaseService.saveDevice(info).catch((e) => console.warn('Supabase device sync background error', e));
   }
 
   // Signatures
@@ -61,6 +64,7 @@ export class ThreatGuardStore {
 
   static saveSignatures(signatures: DetectionSignature[]): void {
     localStorage.setItem(STORAGE_KEYS.SIGNATURES, JSON.stringify(signatures));
+    SupabaseService.saveSignatures(signatures).catch((e) => console.warn('Supabase signatures sync background error', e));
   }
 
   // Telemetry Apps
@@ -76,6 +80,7 @@ export class ThreatGuardStore {
 
   static saveTelemetryApps(apps: TelemetryTargetApp[]): void {
     localStorage.setItem(STORAGE_KEYS.TELEMETRY_APPS, JSON.stringify(apps));
+    SupabaseService.saveTelemetryApps(apps).catch((e) => console.warn('Supabase telemetry apps sync background error', e));
   }
 
   // Scans History
@@ -91,6 +96,7 @@ export class ThreatGuardStore {
 
   static saveScanHistory(history: ScanRecord[]): void {
     localStorage.setItem(STORAGE_KEYS.SCANS, JSON.stringify(history));
+    SupabaseService.saveScanHistory(history).catch((e) => console.warn('Supabase scan history sync background error', e));
   }
 
   // Threats
@@ -106,9 +112,10 @@ export class ThreatGuardStore {
 
   static saveThreats(threats: ThreatRecord[]): void {
     localStorage.setItem(STORAGE_KEYS.THREATS, JSON.stringify(threats));
+    SupabaseService.saveThreats(threats).catch((e) => console.warn('Supabase threats sync background error', e));
   }
 
-  // Custom Sideloaded / Uploaded Files
+  // Custom Files
   static getCustomFiles(): CustomFileItem[] {
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.CUSTOM_FILES);
@@ -123,7 +130,7 @@ export class ThreatGuardStore {
     localStorage.setItem(STORAGE_KEYS.CUSTOM_FILES, JSON.stringify(files));
   }
 
-  // Update threat status (e.g. RESOLVED, FALSE_POSITIVE, MARKED_SAFE, ACTIVE)
+  // Update threat status
   static updateThreatStatus(threatId: string, status: ThreatStatus, reason?: string): ThreatRecord | null {
     const threats = this.getThreats();
     const index = threats.findIndex((t) => t.id === threatId);
@@ -132,7 +139,10 @@ export class ThreatGuardStore {
     const updatedThreat: ThreatRecord = {
       ...threats[index],
       status,
-      resolvedAt: status === 'RESOLVED' || status === 'MARKED_SAFE' || status === 'FALSE_POSITIVE' ? new Date().toISOString() : undefined,
+      resolvedAt:
+        status === 'RESOLVED' || status === 'MARKED_SAFE' || status === 'FALSE_POSITIVE'
+          ? new Date().toISOString()
+          : undefined,
       falsePositiveReason: reason,
     };
 
@@ -216,7 +226,9 @@ export class ThreatGuardStore {
   static refreshDeviceOverallStatus(): DeviceInfo {
     const device = this.getDeviceInfo();
     const threats = this.getThreats();
-    const activeThreats = threats.filter((t) => t.status === 'ACTIVE' || t.status === 'INVESTIGATING' || t.status === 'ACTION_REQUIRED');
+    const activeThreats = threats.filter(
+      (t) => t.status === 'ACTIVE' || t.status === 'INVESTIGATING' || t.status === 'ACTION_REQUIRED'
+    );
 
     const hasCritical = activeThreats.some((t) => t.severity === 'CRITICAL');
     const hasHigh = activeThreats.some((t) => t.severity === 'HIGH');
@@ -238,6 +250,21 @@ export class ThreatGuardStore {
 
   // Initialize bootstrap data on first run
   static async initializeDefaults(): Promise<void> {
+    // Attempt to pull from Supabase first if connected
+    try {
+      const remoteThreats = await SupabaseService.getThreats();
+      if (remoteThreats && remoteThreats.length > 0) {
+        localStorage.setItem(STORAGE_KEYS.THREATS, JSON.stringify(remoteThreats));
+        const remoteScans = await SupabaseService.getScanHistory();
+        if (remoteScans.length > 0) {
+          localStorage.setItem(STORAGE_KEYS.SCANS, JSON.stringify(remoteScans));
+        }
+        return;
+      }
+    } catch (e) {
+      console.warn('Initial remote load fallback', e);
+    }
+
     if (!localStorage.getItem(STORAGE_KEYS.THREATS)) {
       const defaultApps = INITIAL_TELEMETRY_APPS;
       const defaultSignatures = DEFAULT_SIGNATURES;
@@ -245,8 +272,11 @@ export class ThreatGuardStore {
       this.saveSignatures(defaultSignatures);
       this.saveDeviceInfo(INITIAL_DEVICE_INFO);
 
-      // Run initial full scan to populate initial active threats and scan record
-      const { scanRecord, detectedThreats } = await runSecurityScan('FULL_AVAILABLE', defaultApps, defaultSignatures);
+      const { scanRecord, detectedThreats } = await runSecurityScan(
+        'FULL_AVAILABLE',
+        defaultApps,
+        defaultSignatures
+      );
       this.saveThreats(detectedThreats);
       this.saveScanHistory([
         scanRecord,
