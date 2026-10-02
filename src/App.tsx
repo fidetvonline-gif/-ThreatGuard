@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { AppLayout } from './components/AppLayout';
 import { BottomNavBar } from './components/BottomNavBar';
 import { DashboardView } from './components/DashboardView';
@@ -25,6 +25,8 @@ import {
 import { ThreatGuardStore } from './services/threatStore';
 import { runSecurityScan } from './services/detectionEngine';
 
+const AUTO_SCAN_INTERVAL_SECONDS = 45;
+
 export default function App() {
   const [currentTab, setCurrentTab] = useState('dashboard');
   const [activeScreen, setActiveScreen] = useState<
@@ -38,7 +40,7 @@ export default function App() {
     | 'remediation'
     | 'history'
     | 'intel'
-  >('dashboard');
+  >('scanning'); // Starts directly scanning on startup!
 
   // Loaded State
   const [deviceInfo, setDeviceInfo] = useState<DeviceInfo>(ThreatGuardStore.getDeviceInfo());
@@ -55,12 +57,17 @@ export default function App() {
     { name: string; size: number; content: ArrayBuffer | string }[] | undefined
   >(undefined);
 
-  // Modals
+  // Auto-Scan State & Timer
+  const [autoScanEnabled, setAutoScanEnabled] = useState(true);
+  const [autoScanCountdown, setAutoScanCountdown] = useState(AUTO_SCAN_INTERVAL_SECONDS);
+  const isInitialScanDone = useRef(false);
+
+  // Modals & Toast
   const [falsePositiveThreat, setFalsePositiveThreat] = useState<ThreatRecord | null>(null);
   const [showArchModal, setShowArchModal] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Initialize and load data on mount
+  // Initialize data on mount
   useEffect(() => {
     async function init() {
       await ThreatGuardStore.initializeDefaults();
@@ -68,6 +75,24 @@ export default function App() {
     }
     init();
   }, []);
+
+  // Periodic Auto-Scan Countdown Timer
+  useEffect(() => {
+    if (!autoScanEnabled || activeScreen === 'scanning') return;
+
+    const timer = setInterval(() => {
+      setAutoScanCountdown((prev) => {
+        if (prev <= 1) {
+          // Trigger automatic periodic scan in background/live
+          triggerAutomaticScan();
+          return AUTO_SCAN_INTERVAL_SECONDS;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [autoScanEnabled, activeScreen, telemetryApps, signatures]);
 
   const refreshStateFromStore = () => {
     const dev = ThreatGuardStore.getDeviceInfo();
@@ -93,7 +118,46 @@ export default function App() {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  // Triggering Scans
+  // Trigger automatic scan (silent or live)
+  const triggerAutomaticScan = async (showPipeline: boolean = false) => {
+    const currentApps = ThreatGuardStore.getTelemetryApps();
+    const currentSigs = ThreatGuardStore.getSignatures();
+
+    if (showPipeline) {
+      setActiveScanType('FULL_AVAILABLE');
+      setActiveScreen('scanning');
+      return;
+    }
+
+    try {
+      const { scanRecord, detectedThreats } = await runSecurityScan(
+        'FULL_AVAILABLE',
+        currentApps,
+        currentSigs
+      );
+
+      ThreatGuardStore.saveThreats(detectedThreats);
+
+      const history = ThreatGuardStore.getScanHistory();
+      ThreatGuardStore.saveScanHistory([scanRecord, ...history]);
+
+      const dev = ThreatGuardStore.getDeviceInfo();
+      const updatedDev = {
+        ...dev,
+        lastScanAt: scanRecord.completedAt,
+      };
+      ThreatGuardStore.saveDeviceInfo(updatedDev);
+      ThreatGuardStore.refreshDeviceOverallStatus();
+
+      setLatestScanRecord(scanRecord);
+      refreshStateFromStore();
+      showToast(`Auto-Scan updated: ${scanRecord.threatsFound} threats active`);
+    } catch (err) {
+      console.warn('Auto-scan error:', err);
+    }
+  };
+
+  // Triggering Manual Scans
   const handleStartScanSelect = () => {
     setActiveScreen('scan-select');
     setCurrentTab('scan-select');
@@ -116,23 +180,12 @@ export default function App() {
       customScanFiles
     );
 
-    // Merge threats (prevent duplicates)
-    const existing = ThreatGuardStore.getThreats();
-    const existingIds = new Set(existing.map((t) => t.id));
-    const mergedThreats = [...existing];
-
-    for (const newT of detectedThreats) {
-      if (!existingIds.has(newT.id)) {
-        mergedThreats.unshift(newT);
-      }
-    }
-
-    ThreatGuardStore.saveThreats(mergedThreats);
+    // Save threats
+    ThreatGuardStore.saveThreats(detectedThreats);
 
     // Save scan history
     const history = ThreatGuardStore.getScanHistory();
-    const updatedHistory = [scanRecord, ...history];
-    ThreatGuardStore.saveScanHistory(updatedHistory);
+    ThreatGuardStore.saveScanHistory([scanRecord, ...history]);
 
     // Update device timestamp
     const dev = ThreatGuardStore.getDeviceInfo();
@@ -145,8 +198,18 @@ export default function App() {
 
     setLatestScanRecord(scanRecord);
     refreshStateFromStore();
-    setActiveScreen('scan-results');
-    showToast(`Scan complete: ${scanRecord.threatsFound} threats identified`);
+    setAutoScanCountdown(AUTO_SCAN_INTERVAL_SECONDS);
+
+    // If initial startup scan, transition cleanly to dashboard
+    if (!isInitialScanDone.current) {
+      isInitialScanDone.current = true;
+      setActiveScreen('dashboard');
+      setCurrentTab('dashboard');
+      showToast(`Automatic startup scan completed: ${scanRecord.threatsFound} threats found`);
+    } else {
+      setActiveScreen('scan-results');
+      showToast(`Scan complete: ${scanRecord.threatsFound} threats identified`);
+    }
   };
 
   // Navigation handlers
@@ -183,6 +246,8 @@ export default function App() {
       showToast('Threat marked as resolved');
     }
     refreshStateFromStore();
+    // Auto-rescan immediately to verify remediation!
+    triggerAutomaticScan(false);
     setActiveScreen('threats');
   };
 
@@ -195,15 +260,16 @@ export default function App() {
   const handleConfirmMarkSafe = (threatId: string, reason: string) => {
     ThreatGuardStore.updateThreatStatus(threatId, 'FALSE_POSITIVE', reason);
     refreshStateFromStore();
+    triggerAutomaticScan(false);
     showToast('Threat record updated: Marked as False Positive');
   };
 
   const handleResetData = async () => {
     await ThreatGuardStore.resetToSampleState();
     refreshStateFromStore();
-    setActiveScreen('dashboard');
+    setActiveScreen('scanning'); // Auto-scans on reset!
     setCurrentTab('dashboard');
-    showToast('Reset to initial sample telemetry state');
+    showToast('Resetting telemetry and executing automatic scan...');
   };
 
   const handleToggleSignature = (sigId: string) => {
@@ -211,21 +277,26 @@ export default function App() {
     const updated = sigs.map((s) => (s.id === sigId ? { ...s, isActive: !s.isActive } : s));
     ThreatGuardStore.saveSignatures(updated);
     refreshStateFromStore();
-    showToast('Signature state updated');
+    // Auto-rescan telemetry with updated signature rules!
+    triggerAutomaticScan(false);
+    showToast('Signature updated — Auto-scan refreshed');
   };
 
   const handleAddSimulatedApp = (app: TelemetryTargetApp) => {
     const apps = ThreatGuardStore.getTelemetryApps();
     ThreatGuardStore.saveTelemetryApps([app, ...apps]);
     refreshStateFromStore();
-    showToast(`Deployed target package "${app.packageName}"`);
+    // Auto-scan immediately upon package deployment!
+    triggerAutomaticScan(false);
+    showToast(`Deployed "${app.packageName}" — Auto-scanned target`);
   };
 
   const handleRemoveSimulatedApp = (appId: string) => {
     const apps = ThreatGuardStore.getTelemetryApps().filter((a) => a.id !== appId);
     ThreatGuardStore.saveTelemetryApps(apps);
     refreshStateFromStore();
-    showToast('Removed simulated target app');
+    triggerAutomaticScan(false);
+    showToast('Removed app — Auto-scanned device state');
   };
 
   const handleTabNavigation = (tab: string) => {
@@ -247,7 +318,7 @@ export default function App() {
       currentTab={currentTab}
       onNavigateTab={handleTabNavigation}
       activeThreatCount={activeThreatCount}
-      onOpenArchitectureInfo={() => setShowArchModal(true)}
+      onOpenArchitectureInfo={() => setShowArchModal(false ? false : true)}
       onResetData={handleResetData}
     >
       {/* Main Active View Container */}
@@ -262,6 +333,9 @@ export default function App() {
               setCurrentTab('threats');
               setActiveScreen('threats');
             }}
+            autoScanEnabled={autoScanEnabled}
+            onToggleAutoScan={() => setAutoScanEnabled(!autoScanEnabled)}
+            autoScanCountdown={autoScanCountdown}
           />
         )}
 
@@ -353,7 +427,7 @@ export default function App() {
         )}
       </div>
 
-      {/* Mobile Floating Bottom Navigation Bar (hidden on tablet/desktop) */}
+      {/* Mobile Floating Bottom Navigation Bar */}
       {activeScreen !== 'scanning' && (
         <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-950/95 backdrop-blur-md border-t border-slate-800/90 shadow-2xl">
           <BottomNavBar

@@ -12,6 +12,12 @@ import {
   Search,
   CheckCircle2,
   FileCheck2,
+  Activity,
+  Zap,
+  Radio,
+  RefreshCw,
+  ToggleRight,
+  ToggleLeft,
 } from 'lucide-react';
 import { DeviceInfo, ThreatRecord } from '../types/threat';
 
@@ -21,6 +27,9 @@ interface DashboardViewProps {
   onStartScan: () => void;
   onSelectThreat: (threat: ThreatRecord) => void;
   onViewAllThreats: () => void;
+  autoScanEnabled: boolean;
+  onToggleAutoScan: () => void;
+  autoScanCountdown: number;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -29,6 +38,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onStartScan,
   onSelectThreat,
   onViewAllThreats,
+  autoScanEnabled,
+  onToggleAutoScan,
+  autoScanCountdown,
 }) => {
   const activeThreats = threats.filter(
     (t) => t.status === 'ACTIVE' || t.status === 'INVESTIGATING' || t.status === 'ACTION_REQUIRED'
@@ -46,28 +58,74 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         year: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
+        second: '2-digit',
       })
-    : 'Never Scanned';
+    : 'Scanning Now...';
 
   return (
-    <div className="p-4 space-y-5 text-slate-100 animate-fadeIn">
+    <div className="space-y-4 sm:space-y-5 text-slate-100 animate-fadeIn">
+      {/* Live Auto-Scan Protection Engine Status Bar */}
+      <div className="rounded-2xl bg-gradient-to-r from-cyan-950/40 via-slate-900 to-slate-900 border border-cyan-800/40 p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0">
+            <Radio className="w-5 h-5 animate-pulse" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-xs sm:text-sm font-bold text-white tracking-tight">
+                Continuous Telemetry Auto-Scan
+              </span>
+              <span className="px-2 py-0.2 rounded-full text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                ACTIVE
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
+              <span>Next automatic inspection in</span>
+              <span className="font-mono text-cyan-400 font-bold">{autoScanCountdown}s</span>
+              <span className="text-slate-600">•</span>
+              <span>Monitors permissions &amp; storage</span>
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+          <button
+            onClick={onToggleAutoScan}
+            className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer"
+          >
+            {autoScanEnabled ? (
+              <>
+                <ToggleRight className="w-5 h-5 text-emerald-400" />
+                <span>Auto-Scan ON</span>
+              </>
+            ) : (
+              <>
+                <ToggleLeft className="w-5 h-5 text-slate-500" />
+                <span>Auto-Scan OFF</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
       {/* Device Status Card */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800/90 border border-slate-800 p-4 shadow-xl">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800/90 border border-slate-800 p-4 sm:p-5 shadow-xl">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
             <span className="text-[11px] font-mono tracking-wider uppercase text-slate-400">
-              Device Security State
+              Live Security Telemetry State
             </span>
             <div className="flex items-center gap-2">
               {activeThreats.length === 0 ? (
                 <>
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
-                  <h3 className="text-xl font-bold text-white tracking-tight">Protected</h3>
+                  <h3 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Protected</h3>
                 </>
               ) : (
                 <>
                   <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse" />
-                  <h3 className="text-xl font-bold text-amber-300 tracking-tight">
+                  <h3 className="text-xl sm:text-2xl font-bold text-amber-300 tracking-tight">
                     {criticalCount > 0
                       ? 'Critical Risks Active'
                       : highCount > 0
@@ -84,7 +142,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           <div
-            className={`w-12 h-12 rounded-2xl flex items-center justify-center border shadow-inner ${
+            className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center border shadow-inner shrink-0 ${
               activeThreats.length === 0
                 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
                 : criticalCount > 0
@@ -93,24 +151,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             }`}
           >
             {activeThreats.length === 0 ? (
-              <ShieldCheck className="w-7 h-7" />
+              <ShieldCheck className="w-7 h-7 sm:w-8 sm:h-8" />
             ) : (
-              <ShieldAlert className="w-7 h-7" />
+              <ShieldAlert className="w-7 h-7 sm:w-8 sm:h-8" />
             )}
           </div>
         </div>
 
-        {/* Primary Scan Trigger CTA */}
+        {/* Primary Manual Rescan Trigger CTA */}
         <button
           onClick={onStartScan}
-          className="mt-4 w-full h-11 rounded-xl bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white font-semibold text-sm flex items-center justify-center gap-2 shadow-lg shadow-cyan-900/30 active:scale-[0.98] transition-all cursor-pointer"
+          className="mt-4 w-full h-11 sm:h-12 rounded-xl bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-cyan-900/30 active:scale-[0.98] transition-all cursor-pointer"
         >
           <Play className="w-4 h-4 fill-white" />
-          <span>START NEW SCAN</span>
+          <span>RUN IMMEDIATE SCAN NOW</span>
         </button>
       </div>
 
-      {/* Security Summary Counters (Specification Section 7) */}
+      {/* Security Summary Counters */}
       <div className="space-y-2">
         <div className="flex items-center justify-between px-1">
           <h4 className="text-xs font-semibold tracking-wider text-slate-300 uppercase">
@@ -149,7 +207,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </h4>
           <button
             onClick={onViewAllThreats}
-            className="text-[11px] text-cyan-400 hover:text-cyan-300 flex items-center gap-0.5"
+            className="text-[11px] text-cyan-400 hover:text-cyan-300 flex items-center gap-0.5 cursor-pointer"
           >
             <span>View All ({threats.length})</span>
             <ChevronRight className="w-3.5 h-3.5" />
@@ -162,8 +220,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <CheckCircle2 className="w-5 h-5" />
             </div>
             <p className="text-sm font-medium text-slate-200">No Active Threats Detected</p>
-            <p className="text-xs text-slate-400 max-w-xs mx-auto">
-              Permitted OS telemetry and installed application permissions match safe baseline patterns.
+            <p className="text-xs text-slate-400 max-w-sm mx-auto">
+              Continuous automatic inspection verifies that all accessible application packages and permissions match safe security baselines.
             </p>
           </div>
         ) : (
@@ -225,7 +283,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-800/60">
                     <span className="font-mono">Confidence: {threat.confidence}%</span>
                     <span className="text-cyan-400 flex items-center gap-0.5 font-medium">
-                      View Details <ChevronRight className="w-3 h-3" />
+                      Investigate <ChevronRight className="w-3 h-3" />
                     </span>
                   </div>
                 </div>
@@ -241,23 +299,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           Telemetry &amp; Sandbox Baseline
         </h4>
 
-        <div className="grid grid-cols-2 gap-2 text-xs">
-          <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-950/60 border border-slate-800/40">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+          <div className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-950/60 border border-slate-800/40">
             <Smartphone className="w-4 h-4 text-cyan-400 shrink-0" />
             <div className="min-w-0">
-              <span className="text-[10px] text-slate-500 block">OS Version</span>
+              <span className="text-[10px] text-slate-500 block">Platform Environment</span>
               <span className="font-medium text-slate-200 truncate block">
                 {deviceInfo.platformVersion}
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-950/60 border border-slate-800/40">
+          <div className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-950/60 border border-slate-800/40">
             <Lock className="w-4 h-4 text-emerald-400 shrink-0" />
             <div className="min-w-0">
-              <span className="text-[10px] text-slate-500 block">Sandbox Isolation</span>
+              <span className="text-[10px] text-slate-500 block">Sandbox Enforcement</span>
               <span className="font-medium text-slate-200 truncate block">
-                {deviceInfo.isRooted ? 'Rooted (Unsafe)' : 'Non-Root Enforced'}
+                {deviceInfo.isRooted ? 'Rooted (Unsafe)' : 'Non-Root Isolation Active'}
               </span>
             </div>
           </div>
