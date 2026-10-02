@@ -38,7 +38,15 @@ export class ThreatGuardStore {
   static getDeviceInfo(): DeviceInfo {
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.DEVICE);
-      if (stored) return JSON.parse(stored);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.deviceName === 'Google Pixel 9 Pro' || parsed.id === 'dev-pixel9-001') {
+          parsed.deviceName = 'Mobile Security Environment';
+          parsed.id = 'device-target-001';
+          localStorage.setItem(STORAGE_KEYS.DEVICE, JSON.stringify(parsed));
+        }
+        return parsed;
+      }
     } catch (e) {
       console.error('Failed to load device info', e);
     }
@@ -282,7 +290,7 @@ export class ThreatGuardStore {
         scanRecord,
         {
           id: 'scan-prev-001',
-          deviceId: 'dev-pixel9-001',
+          deviceId: 'device-target-001',
           scanType: 'QUICK',
           status: 'COMPLETED',
           startedAt: '2026-09-30T10:14:00Z',

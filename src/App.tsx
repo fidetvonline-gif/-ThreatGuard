@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AndroidFrame } from './components/AndroidFrame';
-import { TopAppBar } from './components/TopAppBar';
+import { AppLayout } from './components/AppLayout';
 import { BottomNavBar } from './components/BottomNavBar';
 import { DashboardView } from './components/DashboardView';
 import { ScanSelectView } from './components/ScanSelectView';
@@ -27,7 +26,6 @@ import { ThreatGuardStore } from './services/threatStore';
 import { runSecurityScan } from './services/detectionEngine';
 
 export default function App() {
-  const [isMobileView, setIsMobileView] = useState(true);
   const [currentTab, setCurrentTab] = useState('dashboard');
   const [activeScreen, setActiveScreen] = useState<
     | 'dashboard'
@@ -239,74 +237,21 @@ export default function App() {
     else if (tab === 'intel') setActiveScreen('intel');
   };
 
-  const getTopBarTitle = () => {
-    switch (activeScreen) {
-      case 'dashboard':
-        return 'Device Security';
-      case 'scan-select':
-        return 'Security Scanner';
-      case 'scanning':
-        return 'Scanning Telemetry';
-      case 'scan-results':
-        return 'Scan Summary';
-      case 'threats':
-        return 'Threat Inventory';
-      case 'threat-detail':
-        return 'Threat Details';
-      case 'technical-detail':
-        return 'Technical Evidence';
-      case 'remediation':
-        return 'Remediation Workflow';
-      case 'history':
-        return 'Scan Logs';
-      case 'intel':
-        return 'Intel & Signatures';
-      default:
-        return 'ThreatGuard';
-    }
-  };
-
   const activeThreatCount = threats.filter(
     (t) => t.status === 'ACTIVE' || t.status === 'INVESTIGATING' || t.status === 'ACTION_REQUIRED'
   ).length;
 
   return (
-    <AndroidFrame
-      isMobileView={isMobileView}
-      onToggleView={() => setIsMobileView(!isMobileView)}
+    <AppLayout
+      deviceInfo={deviceInfo}
+      currentTab={currentTab}
+      onNavigateTab={handleTabNavigation}
+      activeThreatCount={activeThreatCount}
       onOpenArchitectureInfo={() => setShowArchModal(true)}
       onResetData={handleResetData}
     >
-      {/* Top Application Bar */}
-      <TopAppBar
-        title={getTopBarTitle()}
-        subtitle={
-          activeScreen === 'threat-detail' && selectedThreat?.source.determined
-            ? selectedThreat.source.applicationName || selectedThreat.source.packageName
-            : deviceInfo.deviceName
-        }
-        showBack={
-          activeScreen === 'threat-detail' ||
-          activeScreen === 'technical-detail' ||
-          activeScreen === 'remediation' ||
-          activeScreen === 'scan-results'
-        }
-        onBack={() => {
-          if (activeScreen === 'technical-detail' || activeScreen === 'remediation') {
-            setActiveScreen('threat-detail');
-          } else if (activeScreen === 'threat-detail' || activeScreen === 'scan-results') {
-            setActiveScreen('threats');
-          } else {
-            setActiveScreen('dashboard');
-          }
-        }}
-        deviceInfo={deviceInfo}
-        activeTab={currentTab}
-        onNavigateTab={handleTabNavigation}
-      />
-
-      {/* Main Active View Renderer */}
-      <div className="flex-1 overflow-y-auto">
+      {/* Main Active View Container */}
+      <div className="flex-1 w-full">
         {activeScreen === 'dashboard' && (
           <DashboardView
             deviceInfo={deviceInfo}
@@ -408,13 +353,15 @@ export default function App() {
         )}
       </div>
 
-      {/* Android Bottom Navigation Bar */}
+      {/* Mobile Floating Bottom Navigation Bar (hidden on tablet/desktop) */}
       {activeScreen !== 'scanning' && (
-        <BottomNavBar
-          currentTab={currentTab}
-          onSelectTab={handleTabNavigation}
-          activeThreatCount={activeThreatCount}
-        />
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-950/95 backdrop-blur-md border-t border-slate-800/90 shadow-2xl">
+          <BottomNavBar
+            currentTab={currentTab}
+            onSelectTab={handleTabNavigation}
+            activeThreatCount={activeThreatCount}
+          />
+        </div>
       )}
 
       {/* Modals */}
@@ -432,10 +379,10 @@ export default function App() {
 
       {/* Floating Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-slate-900 border border-slate-700 text-white text-xs px-4 py-2.5 rounded-2xl shadow-2xl animate-bounce">
+        <div className="fixed bottom-20 md:bottom-8 left-1/2 -translate-x-1/2 z-50 bg-slate-900 border border-slate-700 text-white text-xs px-4 py-2.5 rounded-2xl shadow-2xl animate-fadeIn">
           {toastMessage}
         </div>
       )}
-    </AndroidFrame>
+    </AppLayout>
   );
 }

@@ -647,7 +647,7 @@ export async function runSecurityScan(
 
   const scanRecord: ScanRecord = {
     id: scanId,
-    deviceId: 'dev-pixel9-001',
+    deviceId: 'device-target-001',
     scanType,
     status: 'COMPLETED',
     startedAt,

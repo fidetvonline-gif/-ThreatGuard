@@ -76,34 +76,34 @@ export const ScanResultSummaryView: React.FC<ScanResultSummaryViewProps> = ({
           Threat Classification By Severity
         </h4>
 
-        <div className="grid grid-cols-5 gap-1.5 text-center">
-          <div className="p-2 rounded-xl bg-slate-900 border border-slate-800">
-            <span className="text-[9px] font-mono text-red-400 block truncate">CRITICAL</span>
-            <span className="text-base font-bold text-red-400 tabular-nums">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 text-center">
+          <div className="p-2 sm:p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+            <span className="text-[10px] font-mono text-red-400 block truncate font-semibold">CRITICAL</span>
+            <span className="text-base sm:text-lg font-bold text-red-400 tabular-nums">
               {scanRecord.criticalCount}
             </span>
           </div>
-          <div className="p-2 rounded-xl bg-slate-900 border border-slate-800">
-            <span className="text-[9px] font-mono text-orange-400 block truncate">HIGH</span>
-            <span className="text-base font-bold text-orange-400 tabular-nums">
+          <div className="p-2 sm:p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+            <span className="text-[10px] font-mono text-orange-400 block truncate font-semibold">HIGH</span>
+            <span className="text-base sm:text-lg font-bold text-orange-400 tabular-nums">
               {scanRecord.highCount}
             </span>
           </div>
-          <div className="p-2 rounded-xl bg-slate-900 border border-slate-800">
-            <span className="text-[9px] font-mono text-amber-400 block truncate">MEDIUM</span>
-            <span className="text-base font-bold text-amber-400 tabular-nums">
+          <div className="p-2 sm:p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+            <span className="text-[10px] font-mono text-amber-400 block truncate font-semibold">MEDIUM</span>
+            <span className="text-base sm:text-lg font-bold text-amber-400 tabular-nums">
               {scanRecord.mediumCount}
             </span>
           </div>
-          <div className="p-2 rounded-xl bg-slate-900 border border-slate-800">
-            <span className="text-[9px] font-mono text-blue-400 block truncate">LOW</span>
-            <span className="text-base font-bold text-blue-400 tabular-nums">
+          <div className="p-2 sm:p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+            <span className="text-[10px] font-mono text-blue-400 block truncate font-semibold">LOW</span>
+            <span className="text-base sm:text-lg font-bold text-blue-400 tabular-nums">
               {scanRecord.lowCount}
             </span>
           </div>
-          <div className="p-2 rounded-xl bg-slate-900 border border-slate-800">
-            <span className="text-[9px] font-mono text-slate-400 block truncate">INFO</span>
-            <span className="text-base font-bold text-slate-400 tabular-nums">
+          <div className="p-2 sm:p-2.5 rounded-xl bg-slate-900 border border-slate-800 col-span-2 sm:col-span-1">
+            <span className="text-[10px] font-mono text-slate-400 block truncate font-semibold">INFORMATIONAL</span>
+            <span className="text-base sm:text-lg font-bold text-slate-400 tabular-nums">
               {scanRecord.informationalCount}
             </span>
           </div>

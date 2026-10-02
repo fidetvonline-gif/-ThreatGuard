@@ -121,22 +121,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </span>
         </div>
 
-        <div className="grid grid-cols-4 gap-2">
-          <div className="rounded-xl bg-slate-900/90 border border-slate-800 p-2.5 text-center">
-            <span className="text-[10px] uppercase font-mono text-slate-400 block truncate">Total</span>
-            <span className="text-lg font-bold text-white tabular-nums">{activeThreats.length}</span>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="rounded-xl bg-slate-900/90 border border-slate-800 p-2.5 sm:p-3 text-center">
+            <span className="text-[10px] uppercase font-mono text-slate-400 block truncate">Total Threats</span>
+            <span className="text-lg sm:text-xl font-bold text-white tabular-nums">{activeThreats.length}</span>
           </div>
-          <div className="rounded-xl bg-red-950/20 border border-red-900/40 p-2.5 text-center">
+          <div className="rounded-xl bg-red-950/20 border border-red-900/40 p-2.5 sm:p-3 text-center">
             <span className="text-[10px] uppercase font-mono text-red-400 block truncate">Critical</span>
-            <span className="text-lg font-bold text-red-400 tabular-nums">{criticalCount}</span>
+            <span className="text-lg sm:text-xl font-bold text-red-400 tabular-nums">{criticalCount}</span>
           </div>
-          <div className="rounded-xl bg-orange-950/20 border border-orange-900/40 p-2.5 text-center">
-            <span className="text-[10px] uppercase font-mono text-orange-400 block truncate">High</span>
-            <span className="text-lg font-bold text-orange-400 tabular-nums">{highCount}</span>
+          <div className="rounded-xl bg-orange-950/20 border border-orange-900/40 p-2.5 sm:p-3 text-center">
+            <span className="text-[10px] uppercase font-mono text-orange-400 block truncate">High Risk</span>
+            <span className="text-lg sm:text-xl font-bold text-orange-400 tabular-nums">{highCount}</span>
           </div>
-          <div className="rounded-xl bg-amber-950/20 border border-amber-900/40 p-2.5 text-center">
-            <span className="text-[10px] uppercase font-mono text-amber-400 block truncate">Medium</span>
-            <span className="text-lg font-bold text-amber-400 tabular-nums">{mediumCount}</span>
+          <div className="rounded-xl bg-amber-950/20 border border-amber-900/40 p-2.5 sm:p-3 text-center">
+            <span className="text-[10px] uppercase font-mono text-amber-400 block truncate">Medium Risk</span>
+            <span className="text-lg sm:text-xl font-bold text-amber-400 tabular-nums">{mediumCount}</span>
           </div>
         </div>
       </div>

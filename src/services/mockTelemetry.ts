@@ -321,8 +321,8 @@ export const INITIAL_TELEMETRY_APPS: TelemetryTargetApp[] = [
 ];
 
 export const INITIAL_DEVICE_INFO: DeviceInfo = {
-  id: 'dev-pixel9-001',
-  deviceName: 'Google Pixel 9 Pro',
+  id: 'device-target-001',
+  deviceName: 'Mobile Security Environment',
   platform: 'Android',
   platformVersion: 'Android 15 (API 35)',
   appVersion: 'ThreatGuard Scanner v1.0.4',

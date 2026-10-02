@@ -92,7 +92,7 @@ export class SupabaseService {
   // DEVICE OPERATIONS
   // ==========================================
 
-  static async getDevice(deviceId: string = 'dev-pixel9-001'): Promise<DeviceInfo> {
+  static async getDevice(deviceId: string = 'device-target-001'): Promise<DeviceInfo> {
     const client = getSupabaseClient();
     if (client) {
       try {

@@ -84,10 +84,10 @@ export const TechnicalDetailsView: React.FC<TechnicalDetailsViewProps> = ({
               DETECTION TELEMETRY ATTRIBUTES
             </h4>
 
-            <div className="grid grid-cols-2 gap-2.5 text-slate-300 font-mono text-[11px]">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-300 font-mono text-[11px]">
               <div className="p-2 rounded-lg bg-slate-950 border border-slate-800/80">
                 <span className="text-[10px] text-slate-500 block">Threat ID</span>
-                <span className="font-bold text-cyan-400">{threat.id}</span>
+                <span className="font-bold text-cyan-400 break-all">{threat.id}</span>
               </div>
               <div className="p-2 rounded-lg bg-slate-950 border border-slate-800/80">
                 <span className="text-[10px] text-slate-500 block">Detection ID</span>
@@ -109,15 +109,15 @@ export const TechnicalDetailsView: React.FC<TechnicalDetailsViewProps> = ({
                 <span className="text-[10px] text-slate-500 block">Lifecycle Status</span>
                 <span className="font-bold text-slate-200">{threat.status}</span>
               </div>
-              <div className="p-2 rounded-lg bg-slate-950 border border-slate-800/80 col-span-2">
+              <div className="p-2 rounded-lg bg-slate-950 border border-slate-800/80 sm:col-span-2">
                 <span className="text-[10px] text-slate-500 block">Detection Method</span>
                 <span className="font-bold text-slate-200">{threat.detectionMethod}</span>
               </div>
-              <div className="p-2 rounded-lg bg-slate-950 border border-slate-800/80 col-span-2">
+              <div className="p-2 rounded-lg bg-slate-950 border border-slate-800/80 sm:col-span-2">
                 <span className="text-[10px] text-slate-500 block">Scanner Environment</span>
                 <span className="font-bold text-slate-200">{threat.scannerVersion}</span>
               </div>
-              <div className="p-2 rounded-lg bg-slate-950 border border-slate-800/80 col-span-2">
+              <div className="p-2 rounded-lg bg-slate-950 border border-slate-800/80 sm:col-span-2">
                 <span className="text-[10px] text-slate-500 block">Detection Timestamp</span>
                 <span className="text-slate-300 font-sans">{new Date(threat.detectedAt).toISOString()}</span>
               </div>
